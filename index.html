@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visual Matriks: Kereta vs Tiang</title>
+    <!-- Tailwind CSS untuk styling pantas -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome untuk ikon Kereta dan Tiang -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Nunito', sans-serif;
+            background-color: #f0f9ff;
+        }
+        
+        /* Custom Styles untuk Matriks */
+        .matrix-bracket {
+            border-left: 3px solid #333;
+            border-right: 3px solid #333;
+            border-radius: 8px;
+            padding: 5px 10px;
+            display: inline-block;
+            position: relative;
+        }
+        .matrix-bracket::before, .matrix-bracket::after {
+            content: '';
+            position: absolute;
+            width: 8px;
+            height: 3px;
+            background-color: #333;
+        }
+        .matrix-bracket::before { top: -1.5px; left: -1.5px; }
+        .matrix-bracket::after { bottom: -1.5px; left: -1.5px; }
+        .matrix-bracket .tr-corner { position: absolute; top: -1.5px; right: -1.5px; width: 8px; height: 3px; background: #333; }
+        .matrix-bracket .br-corner { position: absolute; bottom: -1.5px; right: -1.5px; width: 8px; height: 3px; background: #333; }
+
+        .input-cell {
+            width: 50px;
+            height: 50px;
+            text-align: center;
+            border: 2px solid #cbd5e1;
+            border-radius: 8px;
+            margin: 2px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+        .input-cell:focus {
+            border-color: #3b82f6;
+            outline: none;
+            background-color: #eff6ff;
+        }
+
+        /* Animation Elements */
+        .anim-container {
+            height: 300px;
+            position: relative;
+            background: #e2e8f0;
+            border-radius: 12px;
+            overflow: hidden;
+            border-bottom: 5px solid #94a3b8; /* Jalan raya */
+        }
+
+        .car-row {
+            display: flex;
+            align-items: center;
+            background: #bfdbfe;
+            padding: 5px;
+            border-radius: 8px;
+            border: 2px solid #2563eb;
+            position: absolute;
+            transition: all 0.5s ease;
+            z-index: 10;
+        }
+
+        .pole-col {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: #fef08a;
+            padding: 5px;
+            border-radius: 8px;
+            border: 2px solid #ca8a04;
+            position: absolute;
+            transition: all 0.5s ease;
+            transform-origin: bottom center; /* Pivot point di bawah untuk jatuh */
+            z-index: 5;
+        }
+
+        .anim-cell {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            margin: 2px;
+            font-weight: bold;
+        }
+
+        .highlight-active {
+            background-color: #fca5a5 !important;
+            transform: scale(1.1);
+        }
+
+        .calculation-box {
+            font-family: 'Courier New', monospace;
+            background: #1e293b;
+            color: #4ade80;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 10px;
+            min-height: 60px;
+        }
+
+        /* Ikon Tiang Lampu & Kereta */
+        .car-icon {
+            font-size: 24px;
+            color: #2563eb;
+            margin-right: 10px;
+        }
+        .pole-icon {
+            font-size: 24px;
+            color: #ca8a04;
+            margin-bottom: 10px;
+        }
+
+        /* Hasil Akhir */
+        .result-cell-anim {
+            background-color: #86efac;
+            border-color: #22c55e;
+            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes popIn {
+            0% { transform: scale(0); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen">
+
+    <!-- Header -->
+    <header class="bg-blue-600 text-white p-4 shadow-lg">
+        <div class="container mx-auto flex items-center justify-between">
+            <h1 class="text-2xl font-bold"><i class="fas fa-cube mr-2"></i> Matriks: Kereta & Tiang</h1>
+            <div class="text-sm bg-blue-700 px-3 py-1 rounded">Teknik Visual</div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow container mx-auto p-4 max-w-4xl">
+        
+        <!-- Step 1: Configuration -->
+        <div id="step-config" class="bg-white p-6 rounded-lg shadow-md mb-6">
+            <h2 class="text-xl font-bold mb-4 text-gray-800">Langkah 1: Tentukan Saiz Matriks</h2>
+            <div class="flex flex-col md:flex-row gap-8 justify-center items-center">
+                <!-- Matriks A -->
+                <div class="text-center">
+                    <h3 class="font-bold text-blue-600 mb-2">Matriks A (Kereta)</h3>
+                    <div class="flex items-center gap-2">
+                        <select id="rowA" class="border p-2 rounded bg-gray-50">
+                            <option value="1">1 Baris</option>
+                            <option value="2" selected>2 Baris</option>
+                            <option value="3">3 Baris</option>
+                        </select>
+                        <span>x</span>
+                        <select id="colA" class="border p-2 rounded bg-gray-50">
+                            <option value="1">1 Lajur</option>
+                            <option value="2" selected>2 Lajur</option>
+                            <option value="3">3 Lajur</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="text-2xl text-gray-400"><i class="fas fa-times"></i></div>
+
+                <!-- Matriks B -->
+                <div class="text-center">
+                    <h3 class="font-bold text-yellow-600 mb-2">Matriks B (Tiang)</h3>
+                    <div class="flex items-center gap-2">
+                        <select id="rowB" class="border p-2 rounded bg-gray-50" disabled>
+                            <!-- Auto set based on Col A -->
+                            <option value="2">2 Baris</option>
+                        </select>
+                        <span>x</span>
+                        <select id="colB" class="border p-2 rounded bg-gray-50">
+                            <option value="1">1 Lajur</option>
+                            <option value="2" selected>2 Lajur</option>
+                            <option value="3">3 Lajur</option>
+                        </select>
+                    </div>
+                    <p class="text-xs text-red-500 mt-1">*Baris B mesti sama dengan Lajur A</p>
+                </div>
+            </div>
+            <div class="mt-6 text-center">
+                <button onclick="generateGrids()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-full transition shadow-lg transform hover:-translate-y-1">
+                    Bina Matriks <i class="fas fa-arrow-right ml-2"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Step 2: Input Numbers -->
+        <div id="step-input" class="hidden bg-white p-6 rounded-lg shadow-md mb-6">
+            <h2 class="text-xl font-bold mb-4 text-gray-800">Langkah 2: Isi Unsur Matriks</h2>
+            
+            <div class="flex flex-wrap justify-center items-center gap-8 mb-6">
+                <!-- Grid A -->
+                <div class="text-center">
+                    <span class="block font-bold text-blue-600 mb-2">Matriks A</span>
+                    <div class="matrix-bracket">
+                        <span class="tr-corner"></span><span class="br-corner"></span>
+                        <div id="gridA" class="grid gap-1"></div>
+                    </div>
+                </div>
+
+                <div class="text-2xl font-bold text-gray-400">X</div>
+
+                <!-- Grid B -->
+                <div class="text-center">
+                    <span class="block font-bold text-yellow-600 mb-2">Matriks B</span>
+                    <div class="matrix-bracket">
+                        <span class="tr-corner"></span><span class="br-corner"></span>
+                        <div id="gridB" class="grid gap-1"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-center gap-4">
+                <button onclick="resetConfig()" class="bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded">Kembali</button>
+                <button onclick="startSimulationMode()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-full shadow-lg pulse-anim">
+                    <i class="fas fa-play mr-2"></i> GO! (Mula Animasi)
+                </button>
+            </div>
+        </div>
+
+        <!-- Step 3: Animation Stage -->
+        <div id="step-animation" class="hidden">
+            
+            <!-- Animation Viewer -->
+            <div class="bg-white p-4 rounded-lg shadow-xl mb-4 border-4 border-blue-100">
+                <div class="flex justify-between items-center mb-2">
+                    <h3 class="font-bold text-gray-700">Zon Simulasi</h3>
+                    <div class="text-sm text-gray-500" id="status-text">Bersedia...</div>
+                </div>
+                
+                <!-- The Road/Stage -->
+                <div class="anim-container flex items-center justify-center relative" id="anim-stage">
+                    <div class="absolute bottom-2 left-2 text-gray-400 text-xs font-mono">Simulasi Fizik Matriks</div>
+                    <!-- Elements will be injected here by JS -->
+                </div>
+
+                <!-- Math Box -->
+                <div class="calculation-box text-center shadow-inner" id="math-display">
+                    Tekan butang "Langkah Seterusnya" untuk mula.
+                </div>
+            </div>
+
+            <!-- Result Grid (Building up) -->
+            <div class="bg-white p-6 rounded-lg shadow-md text-center">
+                <h3 class="font-bold text-green-600 mb-4">Matriks Jawapan</h3>
+                <div class="matrix-bracket">
+                    <span class="tr-corner"></span><span class="br-corner"></span>
+                    <div id="gridC" class="grid gap-1"></div>
+                </div>
+                
+                <div class="mt-8 flex justify-center gap-4">
+                    <button id="btn-next" onclick="nextStep()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg shadow text-lg w-full md:w-auto">
+                        Langkah Seterusnya <i class="fas fa-forward ml-2"></i>
+                    </button>
+                    <button id="btn-reset" onclick="resetAll()" class="hidden bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-8 rounded-lg shadow text-lg">
+                        Mula Semula
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <footer class="bg-gray-800 text-white text-center p-4 mt-4">
+        <p>Aplikasi Web Matriks - Konsep Kereta & Tiang Lampu</p>
+    </footer>
+
+    <script>
+        // --- State Management ---
+        let matrixA = [];
+        let matrixB = [];
+        let resultMatrix = [];
+        let config = { rA: 2, cA: 2, rB: 2, cB: 2 };
+        
+        let currentStep = 0;
+        let totalSteps = 0;
+        let animationQueue = [];
+        let isAnimating = false;
+
+        // --- DOM Elements ---
+        const elRowA = document.getElementById('rowA');
+        const elColA = document.getElementById('colA');
+        const elRowB = document.getElementById('rowB');
+        const elColB = document.getElementById('colB');
+        
+        // --- Event Listeners ---
+        elColA.addEventListener('change', () => {
+            // Update Row B automatically (Rule: Col A must equal Row B)
+            elRowB.innerHTML = `<option value="${elColA.value}">${elColA.value} Baris</option>`;
+            elRowB.value = elColA.value;
+        });
+
+        // --- Functions ---
+
+        function generateGrids() {
+            config.rA = parseInt(elRowA.value);
+            config.cA = parseInt(elColA.value);
+            config.rB = parseInt(elRowB.value); // Should match cA
+            config.cB = parseInt(elColB.value);
+
+            renderInputGrid('gridA', config.rA, config.cA, 'a');
+            renderInputGrid('gridB', config.rB, config.cB, 'b');
+
+            document.getElementById('step-config').classList.add('hidden');
+            document.getElementById('step-input').classList.remove('hidden');
+            
+            // Generate mock data for easier testing
+            fillMockData();
+        }
+
+        function renderInputGrid(elementId, rows, cols, prefix) {
+            const container = document.getElementById(elementId);
+            container.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+            container.innerHTML = '';
+
+            for (let i = 0; i < rows; i++) {
+                for (let j = 0; j < cols; j++) {
+                    const input = document.createElement('input');
+                    input.type = 'number';
+                    input.className = 'input-cell';
+                    input.id = `${prefix}-${i}-${j}`;
+                    input.value = Math.floor(Math.random() * 5) + 1; // Default random values
+                    container.appendChild(input);
+                }
+            }
+        }
+
+        function fillMockData() {
+            // Optional: Helper to pre-fill 0s just in case
+        }
+
+        function getMatrixValues(prefix, rows, cols) {
+            let matrix = [];
+            for (let i = 0; i < rows; i++) {
+                let row = [];
+                for (let j = 0; j < cols; j++) {
+                    const val = document.getElementById(`${prefix}-${i}-${j}`).value;
+                    row.push(val === '' ? 0 : parseInt(val));
+                }
+                matrix.push(row);
+            }
+            return matrix;
+        }
+
+        function startSimulationMode() {
+            // Read values
+            matrixA = getMatrixValues('a', config.rA, config.cA);
+            matrixB = getMatrixValues('b', config.rB, config.cB);
+
+            // Setup Result Grid
+            const resultGrid = document.getElementById('gridC');
+            resultGrid.style.gridTemplateColumns = `repeat(${config.cB}, 1fr)`;
+            resultGrid.innerHTML = '';
+            
+            // Initialize empty result grid cells
+            for(let i=0; i<config.rA; i++) {
+                for(let j=0; j<config.cB; j++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'input-cell flex items-center justify-center bg-gray-100 text-gray-400';
+                    cell.id = `res-${i}-${j}`;
+                    cell.textContent = '?';
+                    resultGrid.appendChild(cell);
+                }
+            }
+
+            // Calculate Animation Steps
+            animationQueue = [];
+            for(let i=0; i<config.rA; i++) { // For every row in A
+                for(let j=0; j<config.cB; j++) { // For every column in B
+                    animationQueue.push({ rowIdx: i, colIdx: j });
+                }
+            }
+
+            currentStep = 0;
+            totalSteps = animationQueue.length;
+
+            // UI Switch
+            document.getElementById('step-input').classList.add('hidden');
+            document.getElementById('step-animation').classList.remove('hidden');
+            document.getElementById('math-display').innerHTML = "Sedia untuk mendarab...";
+            document.getElementById('btn-next').disabled = false;
+            document.getElementById('btn-next').innerHTML = `Mula Langkah 1 / ${totalSteps}`;
+        }
+
+        function resetConfig() {
+            document.getElementById('step-input').classList.add('hidden');
+            document.getElementById('step-config').classList.remove('hidden');
+        }
+
+        function resetAll() {
+            document.getElementById('step-animation').classList.add('hidden');
+            document.getElementById('step-config').classList.remove('hidden');
+            document.getElementById('btn-reset').classList.add('hidden');
+            document.getElementById('btn-next').classList.remove('hidden');
+        }
+
+        // --- THE CORE ANIMATION LOGIC ---
+
+        async function nextStep() {
+            if (isAnimating) return;
+            if (currentStep >= animationQueue.length) return;
+
+            isAnimating = true;
+            const btn = document.getElementById('btn-next');
+            btn.disabled = true;
+            btn.classList.add('opacity-50', 'cursor-not-allowed');
+
+            const stepData = animationQueue[currentStep];
+            const stage = document.getElementById('anim-stage');
+            const mathBox = document.getElementById('math-display');
+            
+            // Clear stage
+            stage.innerHTML = '';
+            mathBox.innerHTML = '';
+
+            // 1. CREATE CAR (ROW A)
+            const carDiv = document.createElement('div');
+            carDiv.className = 'car-row';
+            carDiv.style.left = '10px';
+            carDiv.style.top = '100px'; // Initial Y
+            
+            // Car Icon
+            const iconCar = document.createElement('i');
+            iconCar.className = 'fas fa-car car-icon';
+            carDiv.appendChild(iconCar);
+
+            // Row Data
+            const rowData = matrixA[stepData.rowIdx];
+            rowData.forEach(val => {
+                const cell = document.createElement('div');
+                cell.className = 'anim-cell border-blue-400 text-blue-700';
+                cell.textContent = val;
+                carDiv.appendChild(cell);
+            });
+            stage.appendChild(carDiv);
+
+            // 2. CREATE POLE (COL B)
+            const poleDiv = document.createElement('div');
+            poleDiv.className = 'pole-col';
+            poleDiv.style.right = '20px'; // Start far right
+            poleDiv.style.top = '20px';
+            
+            // Pole Icon (Lamp)
+            const iconPole = document.createElement('i');
+            iconPole.className = 'fas fa-lightbulb pole-icon';
+            poleDiv.appendChild(iconPole);
+
+            // Col Data
+            const colData = [];
+            for(let r=0; r<config.rB; r++) {
+                colData.push(matrixB[r][stepData.colIdx]);
+            }
+            
+            colData.forEach(val => {
+                const cell = document.createElement('div');
+                cell.className = 'anim-cell border-yellow-500 text-yellow-700';
+                cell.textContent = val;
+                poleDiv.appendChild(cell);
+            });
+            stage.appendChild(poleDiv);
+
+            // Update Status
+            document.getElementById('status-text').textContent = 
+                `Baris ${stepData.rowIdx+1} (A) sedang bergerak ke Lajur ${stepData.colIdx+1} (B)...`;
+
+            // --- ANIMATION SEQUENCE ---
+
+            // Phase 1: Car Drives to Center, Pole Moves to Position
+            await wait(100);
+            carDiv.style.left = '30%'; 
+            poleDiv.style.right = '30%'; 
+            poleDiv.style.top = '80px'; // Align nicely
+
+            await wait(600); 
+
+            // Phase 2: THE CRASH / FALL (Tiang Himpap Kereta)
+            document.getElementById('status-text').textContent = "Tiang Lampu Jatuh!";
+            
+            // Rotate the pole 90 degrees counter-clockwise (to lie flat left-to-right) or -90
+            // Since pole is vertical, we want it horizontal. 
+            // In the video analogy, the pole falls ONTO the car.
+            // Let's rotate it -90deg so the top becomes left.
+            poleDiv.style.transform = "rotate(-90deg) translate(-40px, -60px)"; 
+            // The translate adjustments depend on exact pixel sizes, tweaked for visual overlap
+            
+            await wait(600);
+
+            // Phase 3: MATH REVEAL & CALCULATION
+            let calculationHTML = `<div class="text-sm text-gray-400 mb-2">Operasi: (Baris ${stepData.rowIdx+1} x Lajur ${stepData.colIdx+1})</div>`;
+            let totalSum = 0;
+            let formulaParts = [];
+
+            // Highlight overlapping cells one by one
+            const carCells = carDiv.querySelectorAll('.anim-cell');
+            const poleCells = poleDiv.querySelectorAll('.anim-cell');
+
+            for (let k = 0; k < rowData.length; k++) {
+                // Highlight pair
+                carCells[k].classList.add('highlight-active');
+                poleCells[k].classList.add('highlight-active');
+
+                const valA = rowData[k];
+                const valB = colData[k];
+                const product = valA * valB;
+                totalSum += product;
+                
+                formulaParts.push(`(${valA} × ${valB})`);
+                
+                // Show math instantly
+                mathBox.innerHTML = calculationHTML + 
+                    `<span class="text-white text-lg">` + formulaParts.join(' + ') + `</span>`;
+
+                await wait(800); // Pause to let user see the pair
+                
+                // Un-highlight
+                carCells[k].classList.remove('highlight-active');
+                poleCells[k].classList.remove('highlight-active');
+            }
+
+            // Phase 4: Final Sum
+            mathBox.innerHTML = calculationHTML + 
+                `<div class="text-xl">` + formulaParts.join(' + ') + ` = <span class="text-3xl text-green-400 font-bold glow">${totalSum}</span></div>`;
+
+            await wait(500);
+
+            // Phase 5: Update Result Grid
+            const resCell = document.getElementById(`res-${stepData.rowIdx}-${stepData.colIdx}`);
+            resCell.textContent = totalSum;
+            resCell.classList.remove('bg-gray-100', 'text-gray-400');
+            resCell.classList.add('result-cell-anim', 'text-gray-800', 'font-bold');
+
+            // Cleanup for next step
+            isAnimating = false;
+            currentStep++;
+            
+            if (currentStep < totalSteps) {
+                btn.disabled = false;
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                btn.innerHTML = `Langkah Seterusnya (${currentStep + 1} / ${totalSteps})`;
+                document.getElementById('status-text').textContent = "Selesai. Tekan butang seterusnya.";
+            } else {
+                btn.classList.add('hidden');
+                document.getElementById('btn-reset').classList.remove('hidden');
+                document.getElementById('status-text').textContent = "Pendaraban Matriks Selesai!";
+                stage.innerHTML = '<div class="text-center mt-20 text-green-600 font-bold text-xl"><i class="fas fa-check-circle"></i> TAHNIAH!</div>';
+            }
+        }
+
+        // Helper for delay
+        function wait(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+    </script>
+</body>
+</html>
